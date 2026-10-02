@@ -1,39 +1,57 @@
 # AI Agent Security Lab
 
-Two small, reproducible labs for AI-agent trust boundaries. Each lab feeds the same **simulated model proposal** to an unsafe tool runner and to a guarded runner, so the difference comes from application-side authorization rather than a better prompt.
+A defensive learning portfolio by [Stefan / Keedz1Off](https://github.com/Keedz1Off): AI-agent trust boundaries, tool authorization, output handling and invariant testing.
 
-| Lab | Attacker-controlled surface | Unsafe result | Guarded result |
-| --- | --- | --- | --- |
-| Indirect prompt injection | Retrieved document text | Simulated `send_record` action runs without user permission | Tool action denied because the user's task is only `summarize` |
-| Path traversal in a tool call | Model-proposed `read_file` path | File outside the allowed workspace is read | Resolved path must stay inside the workspace |
+**Working approach:** understand the failure mode, define an invariant, implement a control, and check it with regression tests and reproducible randomized inputs. Fuzzing is my intended main testing direction; this repository currently contains a small seeded policy fuzzer, not a coverage-guided fuzzing platform.
 
-All data and destinations are synthetic. `send_record` only appends to an in-memory outbox; this repository makes **no network requests** and has no real secrets.
+## Scope
+
+The application lets a user select one synthetic document. An agent may propose a read, but only application-owned policy grants authority. Retrieved content and model output are untrusted data. This lab checks the downstream authorization boundary; it does not run an LLM or measure prompt-injection success.
+
+Implemented controls:
+
+- exact tool and argument schema;
+- per-request document allowlist using opaque IDs;
+- rejected and successful calls both consume a finite session budget;
+- HTML text-node escaping and output length limits;
+- deterministic regression tests plus 2,000 seeded randomized proposals.
+
+No network, shell, filesystem access tools, credentials or live targets are involved. All records are synthetic. See [control walkthroughs](docs/CONTROLS.md) and the [testing methodology](docs/TESTING.md).
 
 ## Run
 
-Python 3.11+; no dependencies or API key:
+Python 3.11+; standard library only. No API key or package installation required.
 
 ```bash
 python lab.py
 python -m unittest discover -s tests -v
 ```
 
-`lab.py` prints the unsafe and guarded outcomes for both cases. The tests check that a valid read still works, the unsafe runner executes the malicious proposal, the guarded runner denies it, and a path escaping the workspace is rejected.
+The demo prints an allowed synthetic report, rejects an out-of-scope document, and renders escaped text. The test suite should finish with `OK`.
 
-## How the example is structured
+## OWASP study map
 
-`simulate_model_proposal` is intentionally simple: it treats a `TOOL_CALL:` line in retrieved text as a model-emitted tool call. This **simulates a model following an injected instruction**; it is not a benchmark of any actual model's susceptibility. Both runners receive the same proposal.
+This map is deliberately pinned to **OWASP Top 10 for LLM Applications 2025**, not a claim to track the newest edition. Category mapping is educational, not certification or complete coverage.
 
-The defense is `authorize_action`. It checks the **user's original task**, the specific tool, and the canonical file path. A retrieved page cannot grant tool permissions by saying it is a system message. Prompt wording and keyword filters alone are not the security boundary.
+| 2025 category | Study/control focus | Repository status |
+| --- | --- | --- |
+| LLM01 Prompt Injection | Keep retrieved text separate from authority | Downstream policy tests only |
+| LLM02 Sensitive Information Disclosure | Restrict records to user-selected scope | Synthetic record tests |
+| LLM03 Supply Chain | Review dependencies and provenance | Study topic; standard-library runtime |
+| LLM04 Data and Model Poisoning | Track dataset origin and changes | Study topic |
+| LLM05 Improper Output Handling | Encode for the destination context | HTML text-node tests |
+| LLM06 Excessive Agency | Minimize tools and permissions | Tool/schema tests |
+| LLM07 System Prompt Leakage | Keep secrets out of prompts | Study topic |
+| LLM08 Vector and Embedding Weaknesses | Enforce retrieval access controls | Study topic; no vector store |
+| LLM09 Misinformation | Check claims against evidence | Study topic |
+| LLM10 Unbounded Consumption | Bound work and output | Session/output tests |
 
-## Threat model and limits
+Source: [OWASP 2025 category index](https://genai.owasp.org/llm-top-10/). The implementation and test coverage descriptions above refer to this repository's own code.
 
-The attacker controls retrieved text, not the user's original request or the policy. The examples cover unauthorized tool use and file access. They do not model browser sessions, real MCP servers, multi-step data exfiltration, symlink races, or a production sandbox. For real systems, also isolate execution, limit network and credentials, validate tool parameters, and require review for sensitive actions.
+## Evidence and limitations
 
-## References
+`lab.py` contains the controls; `tests/test_lab.py` contains the executable evidence. A passing test supports only the property it asserts. It does not prove an agent is secure or demonstrate a real vulnerability.
 
-- [OpenAI: Safety in building agents](https://developers.openai.com/api/docs/guides/agent-builder-safety) — untrusted inputs, structured data flow, tool approvals, and defense in depth.
-- [OpenAI: MCP tools, risks and safety](https://developers.openai.com/api/docs/guides/tools-connectors-mcp#risks-and-safety) — prompt injection and approval for sensitive tool calls.
-- [OpenAI: Sandbox security](https://developers.openai.com/api/docs/guides/agents-api/environments/security) — isolate agent code and restrict network and credentials.
+The trusted caller must authenticate the user and construct `Scope` from their permitted selection. The demo has no login, multi-tenant service, concurrent session storage, sandbox, or model. A production system also needs durable budgets, concurrency control, retrieval authorization, monitoring and independent review. HTML escaping here applies only to text nodes. Output-size checks occur after generation and do not cap model-provider costs.
 
-This is an educational lab, not a claim of a vulnerability in OpenAI, GitHub, or another live service.
+This is an independent educational portfolio, not an official OWASP project, production audit, exploit collection or claim of discovered third-party vulnerabilities.
