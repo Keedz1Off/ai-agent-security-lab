@@ -1,57 +1,53 @@
 # AI Agent Security Lab
 
-A defensive learning portfolio by [Stefan / Keedz1Off](https://github.com/Keedz1Off): AI-agent trust boundaries, tool authorization, output handling and invariant testing.
+**10 рисков ИИ — простыми словами, схемами и кодом защиты.**
 
-**Working approach:** understand the failure mode, define an invariant, implement a control, and check it with regression tests and reproducible randomized inputs. Fuzzing is my intended main testing direction; this repository currently contains a small seeded policy fuzzer, not a coverage-guided fuzzing platform.
+Автор: [Stefan / Keedz1Off](https://github.com/Keedz1Off) · AI Agent Security · инварианты и фаззинг
 
-## Scope
+## Выбери карточку
 
-The application lets a user select one synthetic document. An agent may propose a read, but only application-owned policy grants authority. Retrieved content and model output are untrusted data. This lab checks the downstream authorization boundary; it does not run an LLM or measure prompt-injection success.
+В каждой: **пример → схема проблемы → схема защиты → короткий код**.
 
-Implemented controls:
+| № | Что может пойти не так |
+| --- | --- |
+| 01 | [Подмена инструкций](docs/LLM01.md) |
+| 02 | [Утечка приватных данных](docs/LLM02.md) |
+| 03 | [Ненадёжные зависимости](docs/LLM03.md) |
+| 04 | [Отравленные данные](docs/LLM04.md) |
+| 05 | [Опасная обработка ответа](docs/LLM05.md) |
+| 06 | [Слишком много полномочий](docs/LLM06.md) |
+| 07 | [Утечка системного промпта](docs/LLM07.md) |
+| 08 | [Чужие документы в поиске](docs/LLM08.md) |
+| 09 | [Уверенная выдумка](docs/LLM09.md) |
+| 10 | [Бесконечные действия и расходы](docs/LLM10.md) |
 
-- exact tool and argument schema;
-- per-request document allowlist using opaque IDs;
-- rejected and successful calls both consume a finite session budget;
-- HTML text-node escaping and output length limits;
-- deterministic regression tests plus 2,000 seeded randomized proposals.
+Начни с **01 → 06 → 02**: чужие инструкции, лишние права, утечка данных. Затем читай остальные в любом порядке.
 
-No network, shell, filesystem access tools, credentials or live targets are involved. All records are synthetic. See [control walkthroughs](docs/CONTROLS.md) and the [testing methodology](docs/TESTING.md).
+## Запусти пример
 
-## Run
-
-Python 3.11+; standard library only. No API key or package installation required.
+Python 3.11+, без установки библиотек и API-ключа. Из папки репозитория:
 
 ```bash
-python lab.py
+python examples/llm01.py
+python examples/llm02.py
 python -m unittest discover -s tests -v
 ```
 
-The demo prints an allowed synthetic report, rejects an out-of-scope document, and renders escaped text. The test suite should finish with `OK`.
+Остальные примеры: `llm03.py` … `llm10.py` в папке [examples](examples).
 
-## OWASP study map
+## Что здесь проверяется
 
-This map is deliberately pinned to **OWASP Top 10 for LLM Applications 2025**, not a claim to track the newest edition. Category mapping is educational, not certification or complete coverage.
+**Рабочий lab:** права инструментов, доступ к выбранному документу, безопасный HTML-текст и лимит попыток. 10 тестов, включая 2 000 случайных предложений действий с фиксированным seed.
 
-| 2025 category | Study/control focus | Repository status |
-| --- | --- | --- |
-| LLM01 Prompt Injection | Keep retrieved text separate from authority | Downstream policy tests only |
-| LLM02 Sensitive Information Disclosure | Restrict records to user-selected scope | Synthetic record tests |
-| LLM03 Supply Chain | Review dependencies and provenance | Study topic; standard-library runtime |
-| LLM04 Data and Model Poisoning | Track dataset origin and changes | Study topic |
-| LLM05 Improper Output Handling | Encode for the destination context | HTML text-node tests |
-| LLM06 Excessive Agency | Minimize tools and permissions | Tool/schema tests |
-| LLM07 System Prompt Leakage | Keep secrets out of prompts | Study topic |
-| LLM08 Vector and Embedding Weaknesses | Enforce retrieval access controls | Study topic; no vector store |
-| LLM09 Misinformation | Check claims against evidence | Study topic |
-| LLM10 Unbounded Consumption | Bound work and output | Session/output tests |
+**Остальные карточки:** маленькие иллюстрации отдельных защит. Это не полноценные реализации каждой категории. Данные вымышлены; настоящая модель и внешние сервисы не запускаются.
 
-Source: [OWASP 2025 category index](https://genai.owasp.org/llm-top-10/). The implementation and test coverage descriptions above refer to this repository's own code.
+Фаззинг — основное направление дальнейшей работы. Сейчас используется простой воспроизводимый генератор случайных входов.
 
-## Evidence and limitations
+<details>
+<summary>Версия OWASP и технические подробности</summary>
 
-`lab.py` contains the controls; `tests/test_lab.py` contains the executable evidence. A passing test supports only the property it asserts. It does not prove an agent is secure or demonstrate a real vulnerability.
+Классификация закреплена на [OWASP LLM Top 10 — 2025](https://genai.owasp.org/llm-top-10/). Это независимый учебный проект, а не официальная разработка OWASP. Карточки объясняют категории рисков, а не десять обнаруженных уязвимостей.
 
-The trusted caller must authenticate the user and construct `Scope` from their permitted selection. The demo has no login, multi-tenant service, concurrent session storage, sandbox, or model. A production system also needs durable budgets, concurrency control, retrieval authorization, monitoring and independent review. HTML escaping here applies only to text nodes. Output-size checks occur after generation and do not cap model-provider costs.
+[Подробности реализованных контролей](docs/CONTROLS.md) · [Методика тестов](docs/TESTING.md)
 
-This is an independent educational portfolio, not an official OWASP project, production audit, exploit collection or claim of discovered third-party vulnerabilities.
+</details>
