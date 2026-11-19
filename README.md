@@ -41,6 +41,10 @@ python -m unittest discover -s tests -v
 
 Остальные примеры: `llm03.py` … `llm10.py` в папке [examples](examples).
 
+## GitHub Actions
+
+[Открой Policy tests](https://github.com/Keedz1Off/ai-agent-security-lab/actions/workflows/checks.yml) и нажми **Run workflow**. CI запускает 10 тестов локальных правил и сохраняет лог `check-results`. Галочка **CD demo** добавляет архив `verified-delivery` с логом, SHA коммита и контрольной суммой.
+
 ## Что здесь проверяется
 
 **Рабочий lab:** права инструментов, доступ к выбранному документу, безопасный HTML-текст и лимит попыток. 10 тестов, включая 2 000 случайных предложений действий с фиксированным seed.
